@@ -17,7 +17,7 @@ namespace {
         sqlite3_stmt* stmt = 0;
         int retcode;
 
-        retcode = sqlite3_open("MyDB.db", &db);
+        retcode = sqlite3_open("MyDB", &db);
         if (retcode != SQLITE_OK) {
             sqlite3_close(db);
             fprintf(stderr, "Could not open the MyDB database\n");
@@ -47,7 +47,7 @@ namespace {
         sqlite3* db = 0;
         sqlite3_stmt* stmt = 0;
 
-        int retcode = sqlite3_open("MyDB.db", &db);
+        int retcode = sqlite3_open("MyDB", &db);
         if (retcode != SQLITE_OK) {
             sqlite3_close(db);
             fprintf(stderr, "Could not open the MyDB database\n");
@@ -118,7 +118,7 @@ namespace {
 
         // 创建数据库连接，多个线程共享一个数据库连接
         sqlite3* db = 0;
-        int retcode = sqlite3_open("MyDB.db", &db);
+        int retcode = sqlite3_open("MyDB", &db);
         if (retcode != SQLITE_OK) {
             sqlite3_close(db);
             fprintf(stderr, "Could not open the MyDB database\n");
@@ -140,6 +140,26 @@ namespace {
         std::cout << "All threads have completed." << std::endl;
 
         // 关闭数据库连接
+        sqlite3_close(db);
+    }
+
+    static int callback(void *uuused, int argc, char **argv, char** colName) {
+        for (int i = 0; i < argc; i++) {
+            std::cout << colName[i] << " = " << (argv[i] ? argv[i] : "NULL") << '\t';
+        }
+        std::cout << std::endl;
+        return 0;
+    }
+
+    TEST(SERIALIZED_TEST, LIB_CONN_DB_CONN) {
+        sqlite3* db = 0;
+        sqlite3_open("MyDB", &db);
+        sqlite3_exec(db, "attach database MyDBExtn as DB1", 0, 0, 0);
+        sqlite3_exec(db, "delete from Students where SID=100;", 0, 0, 0);
+        int retcode = sqlite3_exec(db, "select * from Students S, Courses C where S.sid = C.sid", callback, 0, 0);
+        if (retcode != SQLITE_OK) {
+            std::cout << retcode << sqlite3_errmsg(db) << std::endl;
+        }
         sqlite3_close(db);
     }
 }
