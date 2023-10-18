@@ -9,8 +9,7 @@
 namespace {
 
     TEST(SERIALIZED_TEST, THREAD_MODE) {
-        int threadsafe = sqlite3_threadsafe();
-        printf("Thread safe: %d\n", threadsafe);
+        std::cout << sqlite3_threadsafe() << std::endl;
     }
 
     TEST(SERIALIZED_TEST, SELECT) {
