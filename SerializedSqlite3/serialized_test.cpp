@@ -201,4 +201,44 @@ namespace {
     TEST(SERIALIZED_TEST, TRANSACTION_JOURNAL) {
         ASSERT_ANY_THROW(TransactionExceptionThrow());
     }
+
+    void exec(sqlite3 *db, const char *sql) {
+        int ret = sqlite3_exec(db, sql, 0, 0, 0);
+        if (ret != SQLITE_OK) {
+            std::cout << ret << "\t" << sql << std::endl;
+        }
+    }
+
+    TEST(SERIALIZED_TEST, SUBTRANSACTION) {
+        sqlite3* db = 0;
+        sqlite3_open("Tables", &db);
+        
+        exec(db, "begin");
+        exec(db, "delete from t1;");
+        exec(db, "delete from t2;");
+        exec(db, "delete from t3;");
+        exec(db, "insert into t1 values(10, 11);");
+        exec(db, "insert into t1 values(9, 11);");
+        exec(db, "insert into t1 values(8, 11);");
+        // SQLITE_ERROR
+        exec(db, "insert into t2 values(20, 100);");
+        // CONSTRAINT
+        exec(db, "update t1 set x=x+1 where y > 10;");
+        exec(db, "insert into t3 values(1, 2, 3);");
+        exec(db, "commit");
+
+        std::cout << "---" << std::endl;
+        std::cout << "t1" << std::endl;
+        sqlite3_exec(db, "select * from t1;", callback, 0, 0);
+
+        std::cout << "---" << std::endl;
+        std::cout << "t2" << std::endl;
+        sqlite3_exec(db, "select * from t2;", callback, 0, 0);
+
+        std::cout << "---" << std::endl;
+        std::cout << "t3" << std::endl;
+        sqlite3_exec(db, "select * from t3;", callback, 0, 0);
+
+        sqlite3_close(db);
+    }
 }
