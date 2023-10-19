@@ -162,4 +162,43 @@ namespace {
         }
         sqlite3_close(db);
     }
+
+    TEST(SERIALIZED_TEST, TRANSACTION) {
+        sqlite3* db = 0;
+        sqlite3_open("MyDB", &db);
+        sqlite3_exec(db, "attach database MyDBExtn as DB1", 0, 0, 0);
+        
+        sqlite3_exec(db, "begin", 0, 0, 0);
+        sqlite3_exec(db, "delete from Students where SID = 2000", 0, 0, 0);
+        sqlite3_exec(db, "delete from Courses where SID = 2000", 0, 0, 0);
+
+        // see journal
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+
+        sqlite3_exec(db, "insert into Students values (2000)", 0, 0, 0);
+        sqlite3_exec(db, "insert into Courses values ('SQLite Database', 2000)", 0, 0, 0);
+        sqlite3_exec(db, "commit", 0, 0, 0);
+        sqlite3_close(db);
+    }
+
+    void TransactionExceptionThrow() {
+        sqlite3* db = 0;
+        sqlite3_open("MyDB", &db);
+        sqlite3_exec(db, "attach database MyDBExtn as DB1", 0, 0, 0);
+
+        sqlite3_exec(db, "begin", 0, 0, 0);
+        sqlite3_exec(db, "delete from Students where SID = 2000", 0, 0, 0);
+        sqlite3_exec(db, "delete from Courses where SID = 2000", 0, 0, 0);
+
+        throw std::runtime_error("Intend error thrown to see the journal log.");
+
+        sqlite3_exec(db, "insert into Students values (2000)", 0, 0, 0);
+        sqlite3_exec(db, "insert into Courses values ('SQLite Database', 2000)", 0, 0, 0);
+        sqlite3_exec(db, "commit", 0, 0, 0);
+        sqlite3_close(db);
+    }
+
+    TEST(SERIALIZED_TEST, TRANSACTION_JOURNAL) {
+        ASSERT_ANY_THROW(TransactionExceptionThrow());
+    }
 }
